@@ -1,0 +1,23 @@
+[modules]
+  [modules.preprocessor]
+    name = "blockchaintable.TransferPreparer"
+    path = "blockchaintable-test/build/libs/blockchaintable-test-all.jar"
+  [modules.processor]
+    name = "blockchaintable.TransferProcessor"
+    path = "blockchaintable-test/build/libs/blockchaintable-test-all.jar"
+  [modules.postprocessor]
+    name = "blockchaintable.TransferReporter"
+    path = "blockchaintable-test/build/libs/blockchaintable-test-all.jar"
+
+[common]
+  concurrency = 1
+  run_for_sec = 100
+  ramp_for_sec = 10
+  injection_executor = "com.scalar.kelpie.executor.OnetimeInjectionExecutor"
+
+[blockchaintable_test]
+  title = "Blockchaintable test"
+  num_accounts = 1000
+
+
+  
