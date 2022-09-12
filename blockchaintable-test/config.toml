@@ -18,13 +18,13 @@
 [blockchaintable_test]
   title = "Blockchaintable test"
   num_accounts = 1000
-  url = "jdbc:oracle:thin:@//localhost/XEPDB1";
-  user = "scalar";
-  password = "scalar";
-  conn_factory_class_name = "oracle.jdbc.pool.OracleDataSource";
-  initial_pool_size = 5;
-  min_pool_size = 5;
-  max_pool_size = 20;
+  url = "jdbc:oracle:thin:@//localhost/XEPDB1"
+  user = "scalar"
+  password = "scalar"
+  conn_factory_class_name = "oracle.jdbc.pool.OracleDataSource"
+  initial_pool_size = 5
+  min_pool_size = 5
+  max_pool_size = 20
 
 
   
