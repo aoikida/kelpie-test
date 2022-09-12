@@ -14,16 +14,23 @@ import java.sql.Statement;
 
 public class TransferPreparer extends PreProcessor {
 
-  static final String DB_URL = "jdbc:oracle:thin:@//localhost/XEPDB1";
-  static final String DB_USER = "scalar";
-  static final String DB_PASSWORD = "scalar";
-  static final String CONN_FACTORY_CLASS_NAME = "oracle.jdbc.pool.OracleDataSource";
+  
 
   PoolDataSource pds = PoolDataSourceFactory.getPoolDataSource();
   Connection connection = null;
   
   public TransferPreparer(Config config) throws Exception{ 
     super(config);
+
+    String DB_URL = config.getUserString("blockchaintable_test", "url");
+    String DB_USER = config.getUserString("blockchaintable_test", "user");
+    String DB_PASSWORD = config.getUserString("blockchaintable_test", "password");
+    String CONN_FACTORY_CLASS_NAME = config.getUserString("blockchaintable_test", "conn_factory_class_name");
+    int INITIAL_POOL_SIZE = (int) config.getUserLong("blockchaintable_test", "initial_pool_size");
+    int MIN_POOL_SIZE = (int) config.getUserLong("blockchaintable_test", "min_pool_size");
+    int MAX_POOL_SIZE = (int) config.getUserLong("blockchaintable_test", "max_pool_size");
+    int TIMEOUT_CHECK_INTERVAL = 5;
+    int INACTIVE_CONNECTION_TIMEOUT = 10;
     
     pds.setConnectionFactoryClassName(CONN_FACTORY_CLASS_NAME);
     pds.setURL(DB_URL);
@@ -31,11 +38,11 @@ public class TransferPreparer extends PreProcessor {
     pds.setPassword(DB_PASSWORD);
     pds.setConnectionPoolName("JDBC_UCP_POOL");
 
-    pds.setInitialPoolSize(5);
-    pds.setMinPoolSize(5);
-    pds.setMaxPoolSize(20);
-    pds.setTimeoutCheckInterval(5);
-    pds.setInactiveConnectionTimeout(10);
+    pds.setInitialPoolSize(INITIAL_POOL_SIZE);
+    pds.setMinPoolSize(MIN_POOL_SIZE);
+    pds.setMaxPoolSize(MAX_POOL_SIZE);
+    pds.setTimeoutCheckInterval(TIMEOUT_CHECK_INTERVAL);
+    pds.setInactiveConnectionTimeout(INACTIVE_CONNECTION_TIMEOUT);
 
     connection = pds.getConnection();
 
@@ -55,29 +62,33 @@ public class TransferPreparer extends PreProcessor {
 
     logInfo("insert initial values... ");
 
+    try {
+      connection = pds.getConnection();
+      for (int i = 0; i < 1000; i++) {
+        //transactSavings(connection, i, 500);
+        //depositChecking(connection, i, 500);
+      } 
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } catch (Exception e){
       try {
-        connection = pds.getConnection();
-        try{
-          for (int i = 0; i < 1000; i++) {
-            depositChecking(connection, i, 500);
-          }
-        } catch (Exception e){
-          connection.rollback();
-        } 
-      } catch (SQLException e) {
-        e.printStackTrace();
-      } finally {
-        try {
-            if (connection != null) {
-                // データベースを切断
-                connection.close();
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        connection.rollback();
+      } catch (SQLException e1) {
+        // TODO Auto-generated catch block
+        e1.printStackTrace();
       }
+      logWarn("table creation error");
+    } finally {
+        try {
+          if (connection != null) {
+            // データベースを切断
+            connection.close();
+          }
+      } catch (SQLException e) {
+          e.printStackTrace();
+      }
+    }
     logInfo("All records are inserted ");
-
   }
 
   @Override
@@ -131,7 +142,7 @@ public class TransferPreparer extends PreProcessor {
       prepared.execute();
 
       connection.commit();
-      System.out.println("TransactSavings: " + account + " savings -> " + (balance + amount));
+      //System.out.println("TransactSavings: " + account + " savings -> " + (balance + amount));
     } catch (SQLException e) {
       connection.rollback();
     }
