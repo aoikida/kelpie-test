@@ -13,33 +13,43 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class TransferProcessor extends TimeBasedProcessor {
 
+  private final String dbUrl;
+  private final String dbUser;
+  private final String dbPassword;
+  private final String connFactoryClassName;
+  private final int initialPoolSize;
+  private final int minPoolSize;
+  private final int maxPoolSize;
   private final int numAccounts;
+  
+
+  public final int TIMEOUT_CHECK_INTERVAL = 5;
+  public final int INACTIVE_CONNECTION_TIMEOUT = 10;
+
 
   PoolDataSource pds = PoolDataSourceFactory.getPoolDataSource();
   Connection connection = null;
   
-  public TransferProcessor(Config config) throws SQLException{ 
+  public TransferProcessor(Config config) throws Exception{ 
     super(config);
+
+    this.dbUrl = config.getUserString("blockchaintable_test", "url");
+    this.dbUser = config.getUserString("blockchaintable_test", "user");
+    this.dbPassword = config.getUserString("blockchaintable_test", "password");
+    this.connFactoryClassName = config.getUserString("blockchaintable_test", "conn_factory_class_name");
+    this.initialPoolSize = (int) config.getUserLong("blockchaintable_test", "initial_pool_size");
+    this.minPoolSize = (int) config.getUserLong("blockchaintable_test", "min_pool_size");
+    this.maxPoolSize = (int) config.getUserLong("blockchaintable_test", "max_pool_size");
     this.numAccounts = (int) config.getUserLong("blockchaintable_test", "num_accounts");
 
-    String DB_URL = config.getUserString("blockchaintable_test", "url");
-    String DB_USER = config.getUserString("blockchaintable_test", "user");
-    String DB_PASSWORD = config.getUserString("blockchaintable_test", "password");
-    String CONN_FACTORY_CLASS_NAME = config.getUserString("blockchaintable_test", "conn_factory_class_name");
-    int INITIAL_POOL_SIZE = (int) config.getUserLong("blockchaintable_test", "initial_pool_size");
-    int MIN_POOL_SIZE = (int) config.getUserLong("blockchaintable_test", "min_pool_size");
-    int MAX_POOL_SIZE = (int) config.getUserLong("blockchaintable_test", "max_pool_size");
-    int TIMEOUT_CHECK_INTERVAL = 5;
-    int INACTIVE_CONNECTION_TIMEOUT = 10;
+    pds.setConnectionFactoryClassName(connFactoryClassName);
+    pds.setURL(dbUrl);
+    pds.setUser(dbUser);
+    pds.setPassword(dbPassword);
 
-    pds.setConnectionFactoryClassName(CONN_FACTORY_CLASS_NAME);
-    pds.setURL(DB_URL);
-    pds.setUser(DB_USER);
-    pds.setPassword(DB_PASSWORD);
-
-    pds.setInitialPoolSize(INITIAL_POOL_SIZE);
-    pds.setMinPoolSize(MIN_POOL_SIZE);
-    pds.setMaxPoolSize(MAX_POOL_SIZE);
+    pds.setInitialPoolSize(initialPoolSize);
+    pds.setMinPoolSize(minPoolSize);
+    pds.setMaxPoolSize(maxPoolSize);
     pds.setTimeoutCheckInterval(TIMEOUT_CHECK_INTERVAL);
     pds.setInactiveConnectionTimeout(INACTIVE_CONNECTION_TIMEOUT);
   }
@@ -53,59 +63,56 @@ public class TransferProcessor extends TimeBasedProcessor {
     int operation_num = ThreadLocalRandom.current().nextInt(5);
 
     while(true){
-      //enumに変える。
-      try {
-        connection = pds.getConnection(); 
-        connection.setAutoCommit(false);
-
-        switch(operation_num){
-          case 0:
-            writeCheck(connection, fromId, amount);
-            break;
-          case 1:
-            sendPayment(connection, fromId, toId, amount);
-            break;
-          case 2:
-            transactSavings(connection, fromId, amount);
-            break;
-          case 3:
-            depositChecking(connection, fromId, amount);
-            break;
-          case 4:
-            amalgamate(connection, fromId, toId);
-            break;
-        }
-        break;
-        //sendPayment(connection, fromId, toId, amount);
-        //transactSavings(connection, fromId, amount);
-        //depositChecking(connection, fromId, amount);
-        //writeCheck(connection, fromId, amount);
-        //amalgamate(connection, fromId, toId);
-      } catch (SQLException e) {
-        e.printStackTrace();
-      } catch(Exception e){
-          e.printStackTrace();
-          connection.rollback();
-      } finally {
-          try {
-            if (connection != null) {
-                // データベースを切断
-                connection.close();
-            }
-          } catch (SQLException e) {
-              e.printStackTrace();
+      try(Connection connection = pds.getConnection()){
+        try {
+          switch(operation_num){
+            case 0:
+              writeCheck(connection, fromId, amount);
+              break;
+            case 1:
+              sendPayment(connection, fromId, toId, amount);
+              break;
+            case 2:
+              transactSavings(connection, fromId, amount);
+              break;
+            case 3:
+              depositChecking(connection, fromId, amount);
+              break;
+            case 4:
+              amalgamate(connection, fromId, toId);
+              break;
           }
+          //break;
+        } catch (SQLException e) {  // connection error
+          logWarn("connection error");
+          e.printStackTrace();
+        } catch(Exception e){  // operation error
+            //e.printStackTrace();
+            logWarn("conflict occur");
+            connection.rollback();
+        } finally {
+            try {
+              if (connection != null) {
+                  connection.close();
+                  break;
+              }
+            } catch (SQLException e) {
+              e.printStackTrace();
+              break;
+            }
+        }
       }
+      
     }
 
   }
 
   @Override
-  public void close() {
-  }
+  public void close() {}
 
   public void transactSavings(Connection connection, int account, int amount) throws Exception {
     try {
+      connection.setAutoCommit(false);
 
       PreparedStatement prepared =
           connection.prepareStatement(
@@ -134,7 +141,7 @@ public class TransferProcessor extends TimeBasedProcessor {
       prepared.execute();
 
       connection.commit();
-      System.out.println("TransactSavings: " + account + " savings -> " + (balance + amount));
+      //System.out.println("TransactSavings: " + account + " savings -> " + (balance + amount));
     } catch (SQLException e) {
       connection.rollback();
     }
@@ -146,6 +153,9 @@ public class TransferProcessor extends TimeBasedProcessor {
     }
 
     try {
+
+      connection.setAutoCommit(false);
+
 
       PreparedStatement prepared =
           connection.prepareStatement(
@@ -171,7 +181,7 @@ public class TransferProcessor extends TimeBasedProcessor {
       prepared.execute();
 
       connection.commit();
-      System.out.println("DepositChecking: " + account + " checking -> " + (balance + amount));
+      //System.out.println("DepositChecking: " + account + " checking -> " + (balance + amount));
     } catch (SQLException e) {
       connection.rollback();
     }
@@ -179,6 +189,9 @@ public class TransferProcessor extends TimeBasedProcessor {
 
   public void writeCheck(Connection connection, int account, int amount) throws Exception {
     try {
+
+      connection.setAutoCommit(false);
+
 
       PreparedStatement prepared =
           connection.prepareStatement(
@@ -220,7 +233,7 @@ public class TransferProcessor extends TimeBasedProcessor {
       prepared.execute();
 
       connection.commit();
-      System.out.println("WriteCheck: " + account + " checking -> " + (checking - amount));
+      //System.out.println("WriteCheck: " + account + " checking -> " + (checking - amount));
     } catch (SQLException e) {
       connection.rollback();
     }
@@ -228,6 +241,9 @@ public class TransferProcessor extends TimeBasedProcessor {
 
   public void sendPayment(Connection connection, int fromAccount, int toAccount, int amount) throws Exception {
     try {
+
+      connection.setAutoCommit(false);
+
 
       PreparedStatement prepared =
           connection.prepareStatement(
@@ -275,8 +291,8 @@ public class TransferProcessor extends TimeBasedProcessor {
       prepared.execute();
 
       connection.commit();
-      System.out.println("SendPayment: " + fromAccount + " checking -> " + (balance1 - amount));
-      System.out.println("SendPayment: " + toAccount + " checking -> " + (balance2 + amount));
+      //System.out.println("SendPayment: " + fromAccount + " checking -> " + (balance1 - amount));
+      //System.out.println("SendPayment: " + toAccount + " checking -> " + (balance2 + amount));
     } catch (SQLException e) {
       connection.rollback();
     }
@@ -285,6 +301,7 @@ public class TransferProcessor extends TimeBasedProcessor {
   public void amalgamate(Connection connection, int fromAccount, int toAccount) throws Exception {
     try {
 
+      connection.setAutoCommit(false);
 
       PreparedStatement prepared =
           connection.prepareStatement(
@@ -350,18 +367,15 @@ public class TransferProcessor extends TimeBasedProcessor {
       prepared.execute();
 
       connection.commit();
+      /* 
       System.out.println("Amalgamate: " + fromAccount + " savings -> 0");
       System.out.println("Amalgamate: " + fromAccount + " checking -> 0");
       System.out.println(
-          "Amalgamate: " + toAccount + " checking -> " + (savings1 + checking1 + checking2)); 
+          "Amalgamate: " + toAccount + " checking -> " + (savings1 + checking1 + checking2)); */
     } catch (SQLException e) {
       connection.rollback();
     }
   }
-
-
-
-
 }
 
 

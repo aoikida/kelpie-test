@@ -11,10 +11,18 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 
-
 public class TransferPreparer extends PreProcessor {
 
-  
+  private final String dbUrl;
+  private final String dbUser;
+  private final String dbPassword;
+  private final String connFactoryClassName;
+  private final int initialPoolSize;
+  private final int minPoolSize;
+  private final int maxPoolSize;
+
+  public final int TIMEOUT_CHECK_INTERVAL = 5;
+  public final int INACTIVE_CONNECTION_TIMEOUT = 10;
 
   PoolDataSource pds = PoolDataSourceFactory.getPoolDataSource();
   Connection connection = null;
@@ -22,25 +30,23 @@ public class TransferPreparer extends PreProcessor {
   public TransferPreparer(Config config) throws Exception{ 
     super(config);
 
-    String DB_URL = config.getUserString("blockchaintable_test", "url");
-    String DB_USER = config.getUserString("blockchaintable_test", "user");
-    String DB_PASSWORD = config.getUserString("blockchaintable_test", "password");
-    String CONN_FACTORY_CLASS_NAME = config.getUserString("blockchaintable_test", "conn_factory_class_name");
-    int INITIAL_POOL_SIZE = (int) config.getUserLong("blockchaintable_test", "initial_pool_size");
-    int MIN_POOL_SIZE = (int) config.getUserLong("blockchaintable_test", "min_pool_size");
-    int MAX_POOL_SIZE = (int) config.getUserLong("blockchaintable_test", "max_pool_size");
-    int TIMEOUT_CHECK_INTERVAL = 5;
-    int INACTIVE_CONNECTION_TIMEOUT = 10;
+    this.dbUrl = config.getUserString("blockchaintable_test", "url");
+    this.dbUser = config.getUserString("blockchaintable_test", "user");
+    this.dbPassword = config.getUserString("blockchaintable_test", "password");
+    this.connFactoryClassName = config.getUserString("blockchaintable_test", "conn_factory_class_name");
+    this.initialPoolSize = (int) config.getUserLong("blockchaintable_test", "initial_pool_size");
+    this.minPoolSize = (int) config.getUserLong("blockchaintable_test", "min_pool_size");
+    this.maxPoolSize = (int) config.getUserLong("blockchaintable_test", "max_pool_size");
     
-    pds.setConnectionFactoryClassName(CONN_FACTORY_CLASS_NAME);
-    pds.setURL(DB_URL);
-    pds.setUser(DB_USER);
-    pds.setPassword(DB_PASSWORD);
+    pds.setConnectionFactoryClassName(connFactoryClassName);
+    pds.setURL(dbUrl);
+    pds.setUser(dbUser);
+    pds.setPassword(dbPassword);
     pds.setConnectionPoolName("JDBC_UCP_POOL");
 
-    pds.setInitialPoolSize(INITIAL_POOL_SIZE);
-    pds.setMinPoolSize(MIN_POOL_SIZE);
-    pds.setMaxPoolSize(MAX_POOL_SIZE);
+    pds.setInitialPoolSize(initialPoolSize);
+    pds.setMinPoolSize(minPoolSize);
+    pds.setMaxPoolSize(maxPoolSize);
     pds.setTimeoutCheckInterval(TIMEOUT_CHECK_INTERVAL);
     pds.setInactiveConnectionTimeout(INACTIVE_CONNECTION_TIMEOUT);
 
@@ -51,7 +57,7 @@ public class TransferPreparer extends PreProcessor {
       createBank(connection);
     } catch (SQLException e) {
     // ignore if table already exists
-    } finally{
+    } finally {
       connection.close();
     }
 
@@ -65,36 +71,33 @@ public class TransferPreparer extends PreProcessor {
     try {
       connection = pds.getConnection();
       for (int i = 0; i < 1000; i++) {
-        //transactSavings(connection, i, 500);
-        //depositChecking(connection, i, 500);
+        //initialSavings(connection, i, 500);
+        //initialChecking(connection, i, 500);
       } 
-    } catch (SQLException e) {
+    } catch (SQLException e) { // connection error
       e.printStackTrace();
-    } catch (Exception e){
+    } catch (Exception e){ // operation error
       try {
         connection.rollback();
       } catch (SQLException e1) {
         // TODO Auto-generated catch block
         e1.printStackTrace();
       }
-      logWarn("table creation error");
     } finally {
         try {
           if (connection != null) {
-            // データベースを切断
             connection.close();
           }
       } catch (SQLException e) {
-          e.printStackTrace();
+        e.printStackTrace();
       }
     }
+
     logInfo("All records are inserted ");
   }
 
   @Override
-  public void close() {
-
-  }
+  public void close() {}
 
 
   public void createBank(Connection connection) throws SQLException {
@@ -111,7 +114,7 @@ public class TransferPreparer extends PreProcessor {
 
   }
 
-  public void transactSavings(Connection connection, int account, int amount) throws Exception {
+  public void initialSavings(Connection connection, int account, int amount) throws Exception {
     try {
       connection.setAutoCommit(false);
 
@@ -148,7 +151,7 @@ public class TransferPreparer extends PreProcessor {
     }
   }
 
-  public void depositChecking(Connection connection, int account, int amount) throws Exception {
+  public void initialChecking(Connection connection, int account, int amount) throws Exception {
     if (amount < 0) {
       throw new Exception("Invalid amount");
     }
