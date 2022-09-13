@@ -82,29 +82,17 @@ public class TransferProcessor extends TimeBasedProcessor {
               amalgamate(connection, fromId, toId);
               break;
           }
-          //break;
+          break;
         } catch (SQLException e) {  // connection error
           logWarn("connection error");
           e.printStackTrace();
         } catch(Exception e){  // operation error
-            //e.printStackTrace();
-            logWarn("conflict occur");
-            connection.rollback();
-        } finally {
-            try {
-              if (connection != null) {
-                  connection.close();
-                  break;
-              }
-            } catch (SQLException e) {
-              e.printStackTrace();
-              break;
-            }
-        }
+          //e.printStackTrace();
+          logWarn("conflict occur");
+          connection.rollback();
+        } 
       }
-      
     }
-
   }
 
   @Override
