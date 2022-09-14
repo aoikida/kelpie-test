@@ -28,7 +28,6 @@ public class TransferProcessor extends TimeBasedProcessor {
 
 
   PoolDataSource pds = PoolDataSourceFactory.getPoolDataSource();
-  Connection connection = null;
   
   public TransferProcessor(Config config) throws Exception{ 
     super(config);
@@ -87,8 +86,8 @@ public class TransferProcessor extends TimeBasedProcessor {
           logWarn("connection error");
           e.printStackTrace();
         } catch(Exception e){  // operation error
-          //e.printStackTrace();
           logWarn("conflict occur");
+          e.printStackTrace();
           connection.rollback();
         } 
       }
@@ -116,9 +115,11 @@ public class TransferProcessor extends TimeBasedProcessor {
         sequenceNumber = result.getInt(2);
       }
 
+      /* 
       if (balance + amount < 0) {
         throw new Exception("Insufficient balance");
       }
+      */
 
       prepared =
           connection.prepareStatement(

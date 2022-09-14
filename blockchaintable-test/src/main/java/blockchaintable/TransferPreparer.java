@@ -67,12 +67,11 @@ public class TransferPreparer extends PreProcessor {
   public void execute() {
 
     logInfo("insert initial values... ");
-
     try {
       connection = pds.getConnection();
       for (int i = 0; i < 1000; i++) {
-        //initialSavings(connection, i, 500);
-        //initialChecking(connection, i, 500);
+        initialSavings(connection, i, 1000);
+        initialChecking(connection, i, 1000);
       } 
     } catch (SQLException e) { // connection error
       e.printStackTrace();
@@ -84,15 +83,14 @@ public class TransferPreparer extends PreProcessor {
         e1.printStackTrace();
       }
     } finally {
-        try {
-          if (connection != null) {
-            connection.close();
-          }
+      try {
+        if (connection != null) {
+          connection.close();
+        }
       } catch (SQLException e) {
         e.printStackTrace();
       }
     }
-
     logInfo("All records are inserted ");
   }
 
@@ -188,6 +186,6 @@ public class TransferPreparer extends PreProcessor {
       connection.rollback();
     }
   }
-
-
 }
+
+
