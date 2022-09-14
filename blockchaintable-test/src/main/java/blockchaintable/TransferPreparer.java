@@ -21,10 +21,11 @@ public class TransferPreparer extends PreProcessor {
   private final int minPoolSize;
   private final int maxPoolSize;
 
-  public final int TIMEOUT_CHECK_INTERVAL = 5;
-  public final int INACTIVE_CONNECTION_TIMEOUT = 10;
+  private final int TIMEOUT_CHECK_INTERVAL = 5;
+  private final int INACTIVE_CONNECTION_TIMEOUT = 10;
 
   PoolDataSource pds = PoolDataSourceFactory.getPoolDataSource();
+
   Connection connection = null;
   
   public TransferPreparer(Config config) throws Exception{ 
@@ -79,7 +80,6 @@ public class TransferPreparer extends PreProcessor {
       try {
         connection.rollback();
       } catch (SQLException e1) {
-        // TODO Auto-generated catch block
         e1.printStackTrace();
       }
     } finally {

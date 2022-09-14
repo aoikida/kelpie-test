@@ -22,10 +22,8 @@ public class TransferProcessor extends TimeBasedProcessor {
   private final int maxPoolSize;
   private final int numAccounts;
   
-
-  public final int TIMEOUT_CHECK_INTERVAL = 5;
-  public final int INACTIVE_CONNECTION_TIMEOUT = 10;
-
+  private final int TIMEOUT_CHECK_INTERVAL = 5;
+  private final int INACTIVE_CONNECTION_TIMEOUT = 10;
 
   PoolDataSource pds = PoolDataSourceFactory.getPoolDataSource();
   
@@ -40,6 +38,7 @@ public class TransferProcessor extends TimeBasedProcessor {
     this.minPoolSize = (int) config.getUserLong("blockchaintable_test", "min_pool_size");
     this.maxPoolSize = (int) config.getUserLong("blockchaintable_test", "max_pool_size");
     this.numAccounts = (int) config.getUserLong("blockchaintable_test", "num_accounts");
+
 
     pds.setConnectionFactoryClassName(connFactoryClassName);
     pds.setURL(dbUrl);
@@ -86,8 +85,8 @@ public class TransferProcessor extends TimeBasedProcessor {
           logWarn("connection error");
           e.printStackTrace();
         } catch(Exception e){  // operation error
+          //e.printStackTrace();
           logWarn("conflict occur");
-          e.printStackTrace();
           connection.rollback();
         } 
       }
@@ -115,11 +114,9 @@ public class TransferProcessor extends TimeBasedProcessor {
         sequenceNumber = result.getInt(2);
       }
 
-      /* 
       if (balance + amount < 0) {
         throw new Exception("Insufficient balance");
       }
-      */
 
       prepared =
           connection.prepareStatement(
